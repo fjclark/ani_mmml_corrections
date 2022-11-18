@@ -70,6 +70,11 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path):
         pdb_path (str): Path to pdb file.
         sdfs_path (str): Path to file containing all ligand sdfs.
     """
+    # Write out input parameters
+    with open("input_params.txt", "w") as f:
+        f.write(f"n_iter: {n_iter}\n")
+        f.write(f"n_states: {n_states}\n")
+
     # Get smiles of ligand
     idx = get_lig_idx(lig_name, sdfs_path)
     smiles = get_lig_smiles(sdfs_path, idx)
