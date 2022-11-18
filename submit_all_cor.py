@@ -34,7 +34,7 @@ def clean(mmml_dir):
         mmml_dir (str): Path to mmml_corrections directory.
     """
     for lig_name, out_dir in get_outdirs(mmml_dir):
-        cmd = f'rm {out_dir}/repex* {out_dir}/ani_correction*''
+        cmd = f'rm {out_dir}/repex* {out_dir}/ani_correction*'
         print(cmd)
         os.system(cmd)
 
