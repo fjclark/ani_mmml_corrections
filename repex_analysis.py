@@ -399,6 +399,10 @@ def extract_trajectory(topology, nc_path, nc_checkpoint_file=None, state_index=N
     if is_periodic:
         trajectory.unitcell_vectors = box_vectors
 
+    # Save trajectory to outdir
+    outdir = os.path.dirname(nc_path)
+    trajectory.save_dcd(os.path.join(outdir, f'traj_state{state_index}.dcd'))
+
     return trajectory
 
 
