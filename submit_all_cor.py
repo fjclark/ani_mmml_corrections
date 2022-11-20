@@ -1,7 +1,10 @@
 import os
 from argparse import ArgumentParser
+from subprocess import Popen, PIPE, STDOUT
 
 # Get list of out_dirs
+
+
 def get_outdirs(mmml_dir):
     """Find all out_dirs in mmml_dir
 
@@ -16,16 +19,28 @@ def get_outdirs(mmml_dir):
             path = os.path.join(mmml_dir, lig_name, leg)
             yield lig_name, path
 
+
 def submit_all_corr(mmml_dir):
     """Submit all corrections to slurm
 
     Args:
         mmml_dir (str): Path to mmml_corrections directory.
     """
+    # Submit runs
+    job_ids = []
+
     for lig_name, out_dir in get_outdirs(mmml_dir):
-        cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} slurm_submit.sh {lig_name}'
+        cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} submit_jobs.sh {lig_name}'
         print(cmd)
-        os.system(cmd)
+        p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE,
+                  stderr=STDOUT, close_fds=True)
+        output = p.stdout.read()
+        job_ids.append(int(output.split()[-1]))
+
+    # Submit analysis job
+    cmd = f'~/Documents/research/scripts/abfe/rbatch.sh  --dependency=afterok:{",".join([str(i) for i in job_ids])} submit_analysis.sh'
+    os.system(cmd)
+
 
 def clean(mmml_dir):
     """Submit all corrections to slurm
@@ -38,10 +53,13 @@ def clean(mmml_dir):
         print(cmd)
         os.system(cmd)
 
+
 def main():
     parser = ArgumentParser()
-    parser.add_argument("--mmml_dir", type=str, default="mmml_corrections", help="Path to mmml_corrections directory.")
-    parser.add_argument("--mode", type=str, default="run", help="run or clean: whether to run all corrections or clean up.")
+    parser.add_argument("--mmml_dir", type=str, default="mmml_corrections",
+                        help="Path to mmml_corrections directory.")
+    parser.add_argument("--mode", type=str, default="run",
+                        help="run or clean: whether to run all corrections or clean up.")
     args = parser.parse_args()
 
     if args.mode == "run":
@@ -50,6 +68,7 @@ def main():
     elif args.mode == "clean":
         print("Cleaning all corrections...")
         clean(args.mmml_dir)
+
 
 if __name__ == "__main__":
     main()
