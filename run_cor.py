@@ -60,16 +60,28 @@ def get_lig_smiles(sdf_file, idx):
     return smiles
 
 
-def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path):
-    """_summary_
+def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, use_alt_init_coords=True):
+    """Run MM->ANI corrections for a single ligand in complex or solvent leg
 
     Args:
         lig_name (str): Name of ligand in form "emj_31".
         n_iter (int): Number of iterations of 1 ps MCMC cycles to run for.
         n_states (int): Number of lambda windows to use.
-        pdb_path (str): Path to pdb file.
+        pdb_path (str): Path to pdb file which will be used for parametrisation.
         sdfs_path (str): Path to file containing all ligand sdfs.
+        use_alt_init_coords (bool, optional): Whether to use different initial 
+        coordinates for each state. Defaults to True.
     """
+    # Get paths to pdbs for initial coordinates
+    init_coords_pdbs = []
+    if use_alt_init_coords:
+        outdir = os.path.dirname(pdb_path)
+        for i in range(n_states):
+            init_coords_pdbs.append(os.path.join(outdir, f"snapshot_{i}.pdb"))
+
+    else: # Init coordinates is none, use same coords for all states
+        init_coords_pdbs = [pdb_path] * n_states
+
     # Write out input parameters
     with open("input_params.txt", "w") as f:
         f.write(f"n_iter: {n_iter}\n")
@@ -99,7 +111,7 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path):
 
     # Get sampler
     sampler = RepexConstructor(mixed_system,
-                                input_file.getPositions(),
+                                initial_positions=[PDBFile(pdb).positions for pdb in init_coords_pdbs],
                                 temperature=300*unit.kelvin,
                                 n_states=n_states,
                                 mcmc_moves_kwargs = {'timestep': 1.0*unit.femtoseconds, 

@@ -20,7 +20,7 @@ def get_outdirs(mmml_dir):
             yield lig_name, path
 
 
-def submit_all_corr(mmml_dir, n_iter, n_states):
+def submit_all_corr(mmml_dir, n_iter, n_states, pdb_name="system_endstate.pdb"):
     """Submit all corrections to slurm
 
     Args:
@@ -29,12 +29,13 @@ def submit_all_corr(mmml_dir, n_iter, n_states):
         simulations for.
         n_states (int): Number of linearly-spaced lambda windows
         to run.
+        pdb_name (str, optional): Name of pdb file to use for parametrisation.
     """
     # Submit runs
     job_ids = []
 
     for lig_name, out_dir in get_outdirs(mmml_dir):
-        cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} submit_jobs.sh {lig_name} {n_iter} {n_states}'
+        cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} submit_jobs.sh {lig_name} {n_iter} {n_states} ./{pdb_name}'
         print(cmd)
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE,
                   stderr=STDOUT, close_fds=True)
@@ -66,13 +67,15 @@ def main():
                         help="Number of iterations (of 1 ps) to run simulations for.")
     parser.add_argument("--n_states", type=int, default=10,
                         help="Number of linearly-spaced lambda-windows to use.")
+    parser.add_argument("--pdb_name", type=str, default="run",
+                        help="Name of pdb file to use for parametrisation.")
     parser.add_argument("--mode", type=str, default="run",
                         help="run or clean: whether to run all corrections or clean up.")
     args = parser.parse_args()
 
     if args.mode == "run":
         print("Submitting all corrections...")
-        submit_all_corr(args.mmml_dir, args.n_iter, args.n_states)
+        submit_all_corr(args.mmml_dir, args.n_iter, args.n_states, args.pdb_name)
     elif args.mode == "clean":
         print("Cleaning all corrections...")
         clean(args.mmml_dir)
