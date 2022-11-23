@@ -26,6 +26,7 @@ dependencies:
   - backports=1.0=py_2
   - backports.functools_lru_cache=1.6.4=pyhd8ed1ab_0
   - beautifulsoup4=4.11.1=pyha770c72_0
+  - biopython=1.80=py39hb9d737c_0
   - bleach=5.0.1=pyhd8ed1ab_0
   - blosc=1.21.1=h83bc5f7_3
   - bokeh=2.4.3=pyhd8ed1ab_3
@@ -72,6 +73,7 @@ dependencies:
   - exceptiongroup=1.0.1=pyhd8ed1ab_0
   - executing=1.2.0=pyhd8ed1ab_0
   - expat=2.5.0=h27087fc_0
+  - fasteners=0.17.3=pyhd8ed1ab_0
   - fftw=3.3.10=nompi_hf0379b8_105
   - fire=0.4.0=pyh44b312d_0
   - flask=2.2.2=pyhd8ed1ab_0
@@ -90,7 +92,9 @@ dependencies:
   - glib=2.74.1=h6239696_1
   - glib-tools=2.74.1=h6239696_1
   - greenlet=2.0.1=py39h5a03fae_0
+  - griddataformats=1.0.1=pyhd8ed1ab_0
   - grpc-cpp=1.47.1=hc2bec63_6
+  - gsd=2.6.1=py39h2ae25f5_0
   - gst-plugins-base=1.20.2=hcf0ee16_0
   - gstreamer=1.20.3=hd4edc92_2
   - h5py=3.7.0=nompi_py39h817c9c5_102
@@ -186,13 +190,16 @@ dependencies:
   - markupsafe=2.1.1=py39hb9d737c_2
   - matplotlib-base=3.6.2=py39hf9fd14e_0
   - matplotlib-inline=0.1.6=pyhd8ed1ab_0
+  - mdanalysis=2.3.0=py39h4661b88_1
   - mdtraj=1.9.7=py39hc79b4f4_2
   - mistune=2.0.4=pyhd8ed1ab_0
   - mkl=2022.1.0=h84fe81f_915
+  - mmtf-python=1.1.3=pyhd8ed1ab_0
   - mpi=1.0=mpich
   - mpi4py=3.1.4=py39h32b9844_0
   - mpich=4.0.3=h846660c_100
   - mpiplus=v0.0.1=pyhd8ed1ab_1003
+  - mrcfile=1.4.3=pyhd8ed1ab_0
   - msgpack-python=1.0.4=py39hf939315_1
   - munkres=1.1.4=pyh9f0ad1d_0
   - mysql-common=8.0.31=h26416b9_0
@@ -267,6 +274,7 @@ dependencies:
   - pure_eval=0.2.2=pyhd8ed1ab_0
   - pycairo=1.21.0=py39h23c5bb2_2
   - pycparser=2.21=pyhd8ed1ab_0
+  - pyflakes=2.5.0=pyhd8ed1ab_0
   - pygments=2.13.0=pyhd8ed1ab_0
   - pymbar=3.1.0=py39hd257fcd_0
   - pyopenssl=22.1.0=pyhd8ed1ab_0
@@ -331,6 +339,7 @@ dependencies:
   - termcolor=2.1.0=pyhd8ed1ab_0
   - terminado=0.17.0=pyh41d4057_0
   - threadpoolctl=3.1.0=pyh8a188c0_0
+  - tidynamics=1.0.0=py_0
   - tinycss2=1.2.1=pyhd8ed1ab_0
   - tinydb=4.7.0=pyhd8ed1ab_0
   - tk=8.6.12=h27826a3_0
@@ -378,7 +387,7 @@ dependencies:
     - amberutils==21.0
     - mmpbsa-py==16.0
     - openmmml==1.0
-    - openmmtools==0.21.5+20.gffffe8f.dirty
+    - openmmtools==0.21.4+40.gffffe8f.dirty
     - packmol-memgen==1.2.3rc0
     - pdb4amber==22.0
     - pytraj==2.0.6

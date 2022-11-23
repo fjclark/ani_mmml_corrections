@@ -8,6 +8,8 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 import matplotlib.pyplot as plt
 import seaborn as sns
+from MDAnalysis.lib.distances import calc_dihedrals
+import MDAnalysis as mda
 import mdtraj
 import logging
 
@@ -449,6 +451,88 @@ def plot_rmsd(pdb_file, path_nc, analyser, out_file, resname="MOL", checkpoint_n
     fig.savefig(out_file, dpi=1000)
 
 
+# Plot torsions (interested in amide groups in particular)
+
+def get_dihedral(idx1, idx2, idx3, idx4, u):
+    """Get dihedral based on four atom positions
+
+    Args:
+        idx1 (int): Index of first atom
+        idx2 (int): Index of second atom
+        idx3 (int): Index of third atom
+        idx4 (int): Index of fourth atom
+        u (mda universe): System
+
+    Returns:
+        float: Dihedral angle in rad
+    """
+    positions =[u.atoms[idx].position for idx in [idx1,idx2,idx3,idx4]]
+    dihedral = calc_dihedrals(positions[0], positions[1], positions[2], positions[3], box = u.dimensions)
+    return dihedral
+
+
+def plot_torsions(pdb_file, path_nc, analyser, out_file, torsions={"1":[19, 17, 16, 14],
+                                                                   "2":[17, 16, 14, 13],
+                                                                   "3":[11, 10, 9, 7],
+                                                                   "4":[10, 9, 7, 3]}, 
+                  resname="MOL", checkpoint_name="repex_checkpoint.nc"):
+    """Plot torsional angles for specified torsions in the ligand.
+
+    Args:
+        pdb_file (str): Path to the PDB file.
+        path_nc (str): Path to the main NetCDF file.
+        analyser (openmmtools.multistate.MultiStateSamplerAnalyzer): The analyser object.
+        out_file (str): The path to the output file to write.
+        torsions (dict, optional): Dictionary of torsions to plot. Defaults to {"1":[19, 17, 16, 14],
+        "22":[17, 16, 14, 13], "3":[11, 10, 9, 7], "4":[10, 9, 7, 3]}.
+        resname (str, optional): The name of the ligand in the PDB file. Defaults to "MOL".
+        checkpoint_name (str, optional): The name of the checkpoint file. Defaults to "repex_checkpoint.nc".
+    """
+
+    # Get topology
+    topology = app.PDBFile(pdb_file).topology
+    # Count number of states
+    states = analyser.n_states
+    # Create figure
+    fig, axs = plt.subplots(states, 1, figsize=(6, 12))
+
+    for state in range(states):
+        # New axis for each state
+        ax = axs[state]
+
+        # Extract trajectory - this writes out to a dcd file, 
+        # which is then read in by MDAnalysis, rather than
+        # dealing with the mdtraj object directly
+        _ = extract_trajectory(topology,
+                                  path_nc,
+                                  checkpoint_name,
+                                  state,
+                                  )
+        # Get Universe
+        u = mda.Universe(topology, os.path.join(os.path.dirname(path_nc), f"traj_state{state}.dcd"))
+
+        # Dict to store values of dihedrals
+        dihedral_logs = {}
+
+        for i, _ in enumerate(u.trajectory):
+            for key, value in torsions.items():
+                if i ==0:
+                    dihedral_logs[key] = []
+                dihedral_logs[key].append(get_dihedral(value[0], value[1], value[2], value[3], u))
+
+        for key, value in dihedral_logs.items():
+            ax.plot(value, label=f"Torsion {key}")
+
+        ax.set_title(f"State {state}")
+        if state == 0:
+            ax.legend()
+        ax.set_xlabel("Frame No")
+        ax.set_ylabel("Angle / rad")
+
+    fig.set_tight_layout(True)
+    fig.savefig(out_file, dpi=1000)
+
+
 #################################
 # Overall analysis functions and main
 #################################
@@ -494,12 +578,12 @@ def analyse(mmml_dir, temp, sdf_file, lig_names=None, pdb_name="system_endstate.
         n_iter = ana_com.n_iterations
 
         write_correction(ana_com, ana_sol, temp, corr_file)
-        plot_correction_timeseries(
-            output_com, output_sol, temp, os.path.join(lig_dir, "correction_all_components.png"),
-            components=["corr", "complex", "solvent"], n_iterations=n_iter)
-        plot_correction_timeseries(
-            output_com, output_sol, temp, os.path.join(lig_dir, "correction.png"),
-            components=["corr"], n_iterations=n_iter)
+        #plot_correction_timeseries(
+            #output_com, output_sol, temp, os.path.join(lig_dir, "correction_all_components.png"),
+            #components=["corr", "complex", "solvent"], n_iterations=n_iter)
+        #plot_correction_timeseries(
+            #output_com, output_sol, temp, os.path.join(lig_dir, "correction.png"),
+            #components=["corr"], n_iterations=n_iter)
 
         # Analysis with respect to single leg
 
@@ -512,6 +596,11 @@ def analyse(mmml_dir, temp, sdf_file, lig_names=None, pdb_name="system_endstate.
                       analyser,
                       os.path.join(lig_dir, stage, f"{lig}_{stage}_rmsd")
                       )
+            plot_torsions(os.path.join(lig_dir, stage, pdb_name),
+                          os.path.join(lig_dir, stage, "repex.nc"),
+                          analyser,
+                          os.path.join(lig_dir, stage, f"{lig}_{stage}_torsions")
+                          )
 
 
 def main():
