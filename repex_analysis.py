@@ -237,6 +237,49 @@ def plot_overlap(lig, leg, analyser, out_file):
             f.write(
                 f"Off-diagonal overlap between windows {i-1} and {i} = {overlap[i-1,i]:.3f}\n")
 
+# Replica mixing plot
+            
+##################################################################################
+# Acknowlegdement: This function has been modified from YANK
+#  https://github.com/choderalab/yank/blob/master/Yank/reports/notebook.py
+##################################################################################
+
+def plot_replica_mixing(analyser, out_file):
+        """
+        Generate the replica trajectory mixing plots. Show the state of each replica as a function of simulation time
+        Args:
+            analyser (openmmtools.multistate.MultiStateSamplerAnalyzer): Analyser for leg.
+            out_file (str): Name to save plot to.
+            to write.
+        """
+        # Read the data
+        sampled_energies, _, _, state_kn = analyser.read_energies()
+        n_replicas, n_states, n_iterations = sampled_energies.shape
+
+        # Create plot
+        fig, axs = plt.subplots(nrows=n_states, ncols=1, figsize=(10, n_states))
+
+        # Loop through all states
+        for replica_index in range(n_replicas):
+            # Get axis
+            ax = axs[replica_index]
+            # Actually plot
+            ax.plot(state_kn[replica_index, :], 'k.')
+            # Format plot
+            ax.set_xlim([0, n_iterations])
+            ax.set_ylim([0, n_states])
+            ax.set_ylabel("State index")
+            ax.set_title(f"Replica {replica_index}")
+            if replica_index < n_replicas - 1:
+                ax.set_xticks([])
+            else:
+                ax.set_xlabel("Iteration number")
+
+        # Format plot
+        fig.set_tight_layout(True)
+        fig.savefig(out_file, dpi=1000)
+
+
 # RMSD
 
 ##################################################################################
@@ -601,6 +644,7 @@ def analyse(mmml_dir, temp, sdf_file, lig_names=None, pdb_name="system_endstate.
                           analyser,
                           os.path.join(lig_dir, stage, f"{lig}_{stage}_torsions")
                           )
+            plot_replica_mixing(analyser, os.path.join(lig_dir, stage, "replica_mixing.png"))
 
 
 def main():
