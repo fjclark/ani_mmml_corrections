@@ -578,12 +578,12 @@ def analyse(mmml_dir, temp, sdf_file, lig_names=None, pdb_name="system_endstate.
         n_iter = ana_com.n_iterations
 
         write_correction(ana_com, ana_sol, temp, corr_file)
-        #plot_correction_timeseries(
-            #output_com, output_sol, temp, os.path.join(lig_dir, "correction_all_components.png"),
-            #components=["corr", "complex", "solvent"], n_iterations=n_iter)
-        #plot_correction_timeseries(
-            #output_com, output_sol, temp, os.path.join(lig_dir, "correction.png"),
-            #components=["corr"], n_iterations=n_iter)
+        plot_correction_timeseries(
+            output_com, output_sol, temp, os.path.join(lig_dir, "correction_all_components.png"),
+            components=["corr", "complex", "solvent"], n_iterations=n_iter)
+        plot_correction_timeseries(
+            output_com, output_sol, temp, os.path.join(lig_dir, "correction.png"),
+            components=["corr"], n_iterations=n_iter)
 
         # Analysis with respect to single leg
 
