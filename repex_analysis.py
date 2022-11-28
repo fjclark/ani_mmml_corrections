@@ -514,10 +514,12 @@ def get_dihedral(idx1, idx2, idx3, idx4, u):
     return dihedral
 
 
-def plot_torsions(pdb_file, path_nc, analyser, out_file, torsions={"1":[19, 17, 16, 14],
-                                                                   "2":[17, 16, 14, 13],
-                                                                   "3":[11, 10, 9, 7],
-                                                                   "4":[10, 9, 7, 3]}, 
+def plot_torsions(pdb_file, path_nc, analyser, out_file,
+                  plot_type = "hist",
+                  torsions={"1":[19, 17, 16, 14],
+                            "2":[17, 16, 14, 13],
+                            "3":[11, 10, 9, 7],
+                            "4":[10, 9, 7, 3]}, 
                   resname="MOL", checkpoint_name="repex_checkpoint.nc"):
     """Plot torsional angles for specified torsions in the ligand.
 
@@ -526,23 +528,27 @@ def plot_torsions(pdb_file, path_nc, analyser, out_file, torsions={"1":[19, 17, 
         path_nc (str): Path to the main NetCDF file.
         analyser (openmmtools.multistate.MultiStateSamplerAnalyzer): The analyser object.
         out_file (str): The path to the output file to write.
+        plot_type (str, optional): The type of plot to make. "hist" or "timeseries". Defaults to "hist".
         torsions (dict, optional): Dictionary of torsions to plot. Defaults to {"1":[19, 17, 16, 14],
         "22":[17, 16, 14, 13], "3":[11, 10, 9, 7], "4":[10, 9, 7, 3]}.
         resname (str, optional): The name of the ligand in the PDB file. Defaults to "MOL".
         checkpoint_name (str, optional): The name of the checkpoint file. Defaults to "repex_checkpoint.nc".
     """
+    # Check requested plot type is valid
+    if plot_type not in ["hist", "timeseries"]:
+        raise ValueError('Plot type must be either "hist" or "timeseries"')
 
     # Get topology
     topology = app.PDBFile(pdb_file).topology
     # Count number of states
     states = analyser.n_states
     # Create figure
-    fig, axs = plt.subplots(states, 1, figsize=(6, 12))
+    if plot_type == "timeseries":
+        fig, axs = plt.subplots(states, len(torsions), figsize=(6 * len(torsions), 2 * states))
+    elif plot_type == "hist":
+        fig, axs = plt.subplots(states, len(torsions), figsize=(2 * len(torsions), 2 * states))
 
     for state in range(states):
-        # New axis for each state
-        ax = axs[state]
-
         # Extract trajectory - this writes out to a dcd file, 
         # which is then read in by MDAnalysis, rather than
         # dealing with the mdtraj object directly
@@ -557,20 +563,30 @@ def plot_torsions(pdb_file, path_nc, analyser, out_file, torsions={"1":[19, 17, 
         # Dict to store values of dihedrals
         dihedral_logs = {}
 
+        # Extract values of dihedrals
         for i, _ in enumerate(u.trajectory):
             for key, value in torsions.items():
                 if i ==0:
                     dihedral_logs[key] = []
                 dihedral_logs[key].append(get_dihedral(value[0], value[1], value[2], value[3], u))
 
-        for key, value in dihedral_logs.items():
-            ax.plot(value, label=f"Torsion {key}")
+        # Now plot
 
-        ax.set_title(f"State {state}")
-        if state == 0:
-            ax.legend()
-        ax.set_xlabel("Frame No")
-        ax.set_ylabel("Angle / rad")
+        if plot_type == "timeseries":
+            for i, (key, value) in enumerate(dihedral_logs.items()):
+                ax = axs[state, i]
+                ax.plot(value)
+                ax.set_title(f"State {state}, \nTorsion {key}: {torsions[key]}")
+                ax.set_xlabel("Frame No")
+                ax.set_ylabel("Angle / rad")
+
+        elif plot_type == "hist":
+            for i, (key, value) in enumerate(dihedral_logs.items()):
+                ax = axs[state, i]
+                ax.hist(value, density=True)
+                ax.set_title(f"State {state}, \nTorsion {key}:\n {torsions[key]}")
+                ax.set_xlabel("Angle / rad")
+                ax.set_ylabel("Density")
 
     fig.set_tight_layout(True)
     fig.savefig(out_file, dpi=1000)
@@ -639,11 +655,13 @@ def analyse(mmml_dir, temp, sdf_file, lig_names=None, pdb_name="system_endstate.
                       analyser,
                       os.path.join(lig_dir, stage, f"{lig}_{stage}_rmsd")
                       )
-            plot_torsions(os.path.join(lig_dir, stage, pdb_name),
-                          os.path.join(lig_dir, stage, "repex.nc"),
-                          analyser,
-                          os.path.join(lig_dir, stage, f"{lig}_{stage}_torsions")
-                          )
+            for plot_type in ["timeseries", "hist"]:
+                plot_torsions(os.path.join(lig_dir, stage, pdb_name),
+                            os.path.join(lig_dir, stage, "repex.nc"),
+                            analyser,
+                            os.path.join(lig_dir, stage, f"{lig}_{stage}_torsions_{plot_type}"),
+                            plot_type=plot_type,
+                            )
             plot_replica_mixing(analyser, os.path.join(lig_dir, stage, "replica_mixing.png"))
 
 

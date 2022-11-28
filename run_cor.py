@@ -72,6 +72,9 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, use_alt_ini
         use_alt_init_coords (bool, optional): Whether to use different initial 
         coordinates for each state. Defaults to True.
     """
+    # TODO: Take temperature as argument?
+    temperatures= [t * unit.kelvin for t in [300, 310, 330, 370, 450, 370, 330, 310, 300]]
+
     # Get paths to pdbs for initial coordinates
     init_coords_pdbs = []
     if use_alt_init_coords:
@@ -86,6 +89,7 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, use_alt_ini
     with open("input_params.txt", "w") as f:
         f.write(f"n_iter: {n_iter}\n")
         f.write(f"n_states: {n_states}\n")
+        f.write(f"temperatures: {temperatures}\n")
 
     # Get smiles of ligand
     idx = get_lig_idx(lig_name, sdfs_path)
@@ -112,7 +116,7 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, use_alt_ini
     # Get sampler
     sampler = RepexConstructor(mixed_system,
                                 initial_positions=[PDBFile(pdb).positions for pdb in init_coords_pdbs],
-                                temperature=300*unit.kelvin,
+                                temperatures= temperatures,
                                 n_states=n_states,
                                 mcmc_moves_kwargs = {'timestep': 1.0*unit.femtoseconds, 
                                                     'collision_rate': 1.0/unit.picoseconds,
@@ -121,7 +125,8 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, use_alt_ini
                                 replica_exchange_sampler_kwargs = {'number_of_iterations': n_iter,
                                                                 'online_analysis_interval': 10,
                                                                 'online_analysis_minimum_iterations': 10,},
-                                storage_kwargs = {'storage':f'{os.getcwd()}/repex.nc'}
+                                storage_kwargs = {'storage':f'{os.getcwd()}/repex.nc',
+                                                  'checkpoint_interval': 5}
                             ).sampler
 
     # minimise positions at each state
@@ -139,9 +144,13 @@ def main():
     parser.add_argument("--n_states", type=int, default=10, help="Number of lambda windows to use")
     parser.add_argument("--pdb_path", type=str, default="./system_endstate.pdb", help="Path to pdb file")
     parser.add_argument("--sdfs_path", type=str, default="../../../ligands.sdf", help="Path to file containing all ligand sdfs")
+    parser.add_argument("--use_alt_int_coords", type=str, default="False", help="Whether or not to start replicas from different initial coordinates")
     args = parser.parse_args()
 
-    run_corrections(args.lig_name, args.n_iter, args.n_states, args.pdb_path, args.sdfs_path)
+    if args.use_alt_int_coords == "True":
+        run_corrections(args.lig_name, args.n_iter, args.n_states, args.pdb_path, args.sdfs_path, use_alt_init_coords=True)
+    else:
+        run_corrections(args.lig_name, args.n_iter, args.n_states, args.pdb_path, args.sdfs_path, use_alt_init_coords=False)
 
 
 if __name__ == "__main__":
