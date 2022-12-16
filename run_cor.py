@@ -19,7 +19,7 @@ from openmm.app import (
     PME,
 )
 from openff.toolkit.topology import Molecule
-from openmmforcefields.generators import SMIRNOFFTemplateGenerator
+from openmmforcefields.generators import SMIRNOFFTemplateGenerator, GAFFTemplateGenerator
 from openmmml import MLPotential
 from openmm.unit import nanometer, nanometers, molar, angstrom
 
@@ -37,8 +37,18 @@ def initialize_mm_forcefield(molecule):
     forcefield = ForceField("amber/protein.ff14SB.xml", "amber/tip3p_standard.xml")
     if molecule is not None:
         # Ensure we use unconstrained force field
+
+        # OFF fit to ANI2x
+        #smirnoff = SMIRNOFFTemplateGenerator(molecules=molecule, forcefield='/home/finlayclark/Documents/research/mm-ml/corrections_unconstrained/xtb_ani2x_openff_1_3.offxml')
+
+        # OFF 1.0.0
         smirnoff = SMIRNOFFTemplateGenerator(molecules=molecule, forcefield='openff_unconstrained-1.0.0.offxml')
         forcefield.registerTemplateGenerator(smirnoff.generator)
+
+        # Gaff
+        #gaff = GAFFTemplateGenerator(molecules=molecule, forcefield='gaff-2.11')
+        #forcefield.registerTemplateGenerator(gaff.generator)
+
     return forcefield
 
 
@@ -60,7 +70,7 @@ def get_lig_smiles(sdf_file, idx):
     return smiles
 
 
-def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, use_alt_init_coords=True):
+def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, use_alt_init_coords=False):
     """Run MM->ANI corrections for a single ligand in complex or solvent leg
 
     Args:
@@ -72,8 +82,28 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, use_alt_ini
         use_alt_init_coords (bool, optional): Whether to use different initial 
         coordinates for each state. Defaults to True.
     """
-    # TODO: Take temperature as argument?
-    temperatures= [t * unit.kelvin for t in [300, 310, 330, 370, 450, 370, 330, 310, 300]]
+    # TODO: Take temperatures as argument?
+    # using temperatures = [T_min + (T_max - T_min) * (math.exp(float(i) / float(n_replicas-1)) - 1.0) / (math.e - 1.0) for i in range(n_replicas)]
+#    temperatures= [t * unit.kelvin for t in [300.0, 349.588853001336, 413.2622006394437, 495.0203973723682, 600.0, 495.0203973723682, 413.2622006394437, 349.588853001336, 300.0]]
+#    temperatures = [t * unit.kelvin for t in [300.0,
+#                                              307.74892982405765,
+#                                              316.529617667112,
+#                                              326.4794405133317,
+#                                              337.75406687981456,
+#                                              350.529892305901,
+#                                              365.0067991241227,
+#                                              381.41128369038324,
+#                                              400.0,
+#                                              381.41128369038324,
+#                                              365.0067991241227,
+#                                              350.529892305901,
+#                                              337.75406687981456,
+#                                              326.4794405133317,
+#                                              316.529617667112,
+#                                              307.74892982405765,
+#                                              300.0
+#                                              ]]
+    temperatures = [300.0 * unit.kelvin] * n_states
 
     # Get paths to pdbs for initial coordinates
     init_coords_pdbs = []
