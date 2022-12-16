@@ -19,7 +19,7 @@ def get_outdirs(mmml_dir):
             yield lig_name, path
 
 
-def submit_all_corr(mmml_dir, n_iter, n_states, pdb_name="system_endstate.pdb", use_alt_init_coords=True):
+def submit_all_corr(mmml_dir, n_iter, n_states, pdb_name="system_endstate.pdb", use_alt_init_coords=False):
     """Submit all corrections to slurm
 
     Args:
@@ -56,7 +56,7 @@ def clean(mmml_dir):
         mmml_dir (str): Path to mmml_corrections directory.
     """
     for lig_name, out_dir in get_outdirs(mmml_dir):
-        cmd = f'rm {out_dir}/repex* {out_dir}/ani_correction*'
+        cmd = f'rm {out_dir}/repex* {out_dir}/ani_correction* {out_dir}/input_params.txt'
         print(cmd)
         os.system(cmd)
 
