@@ -40,7 +40,7 @@ def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name
     job_ids = []
 
     for lig_name, out_dir in get_outdirs(mmml_dir):
-        if out_dir.split("/")[-2] == "complex":
+        if out_dir.split("/")[-1] == "complex":
             n_iter = n_iter_complex
         else:
             n_iter = n_iter_solvent
@@ -78,7 +78,7 @@ def main():
                         help="Number of iterations (of 1 ps) to run simulations for for complex leg.")
     parser.add_argument("--n_states", type=int, default=10,
                         help="Number of linearly-spaced lambda-windows to use.")
-    parser.add_argument("--pdb_name", type=str, default="snapshot_0.pdb",
+    parser.add_argument("--pdb_name", type=str, default="system_endstate.pdb",
                         help="Name of pdb file to use for parametrisation.")
     parser.add_argument("--use_alt_int_coords", type=bool, default=False,
                         help="Use different initial positions for each state.")
