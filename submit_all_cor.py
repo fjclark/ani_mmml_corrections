@@ -4,6 +4,7 @@ from subprocess import Popen, PIPE, STDOUT
 
 # Get list of out_dirs
 
+
 def get_outdirs(mmml_dir):
     """Find all out_dirs in mmml_dir
 
@@ -19,13 +20,15 @@ def get_outdirs(mmml_dir):
             yield lig_name, path
 
 
-def submit_all_corr(mmml_dir, n_iter, n_states, pdb_name="system_endstate.pdb", use_alt_init_coords=False):
+def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name="system_endstate.pdb", use_alt_init_coords=False):
     """Submit all corrections to slurm
 
     Args:
         mmml_dir (str): Path to mmml_corrections directory.
-        n_iter (int): Number of iterations (of 1 ps) to run 
-        simulations for.
+        n_iter_solvent (int): Number of iterations (of 1 ps) to run 
+        simulations for in the solvent leg.
+        n_iter_complex (int): Number of iterations (of 1 ps) to run 
+        simulations for in the complex stage.
         n_states (int): Number of linearly-spaced lambda windows
         to run.
         pdb_name (str, optional): Name of pdb file to use for parametrisation.
@@ -37,6 +40,10 @@ def submit_all_corr(mmml_dir, n_iter, n_states, pdb_name="system_endstate.pdb", 
     job_ids = []
 
     for lig_name, out_dir in get_outdirs(mmml_dir):
+        if out_dir.split("/")[-2] == "complex":
+            n_iter = n_iter_complex
+        else:
+            n_iter = n_iter_solvent
         cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} submit_jobs.sh {lig_name} {n_iter} {n_states} ./{pdb_name} {str(use_alt_init_coords)}'
         print(cmd)
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE,
@@ -65,8 +72,10 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--mmml_dir", type=str, default="mmml_corrections",
                         help="Path to mmml_corrections directory.")
-    parser.add_argument("--n_iter", type=int, default=5000,
-                        help="Number of iterations (of 1 ps) to run simulations for.")
+    parser.add_argument("--n_iter_solvent", type=int, default=5000,
+                        help="Number of iterations (of 1 ps) to run simulations for for solvent leg.")
+    parser.add_argument("--n_iter_complex", type=int, default=5000,
+                        help="Number of iterations (of 1 ps) to run simulations for for complex leg.")
     parser.add_argument("--n_states", type=int, default=10,
                         help="Number of linearly-spaced lambda-windows to use.")
     parser.add_argument("--pdb_name", type=str, default="snapshot_0.pdb",
@@ -79,7 +88,8 @@ def main():
 
     if args.mode == "run":
         print("Submitting all corrections...")
-        submit_all_corr(args.mmml_dir, args.n_iter, args.n_states, args.pdb_name , use_alt_init_coords=args.use_alt_int_coords)
+        submit_all_corr(args.mmml_dir, args.n_iter_solvent, args.n_iter_complex, args.n_states,
+                        args.pdb_name, use_alt_init_coords=args.use_alt_int_coords)
     elif args.mode == "clean":
         print("Cleaning all corrections...")
         clean(args.mmml_dir)
