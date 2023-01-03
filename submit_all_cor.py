@@ -20,7 +20,8 @@ def get_outdirs(mmml_dir):
             yield lig_name, path
 
 
-def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name="system_endstate.pdb", use_alt_init_coords=False):
+def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name="system_endstate.pdb",
+                    from_amber_input = False, prm7_name="system.prm7", use_alt_init_coords=False):
     """Submit all corrections to slurm
 
     Args:
@@ -32,6 +33,9 @@ def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name
         n_states (int): Number of linearly-spaced lambda windows
         to run.
         pdb_name (str, optional): Name of pdb file to use for parametrisation.
+        from_amber_input (bool, optional): Whether to create the system from amber input. Defaults to False.
+        prm7_name (str, optional): Name of prm7 7 file. Assumed to be the same for bound and free legs. Defaults to "system.prm7".
+        Only required if from_amber_input is True.
         use_alt_init_coords (bool, optional): Whether to use different initial positions for each state.
         Defaults to True.
     """
@@ -44,7 +48,7 @@ def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name
             n_iter = n_iter_complex
         else:
             n_iter = n_iter_solvent
-        cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} submit_jobs.sh {lig_name} {n_iter} {n_states} ./{pdb_name} {str(use_alt_init_coords)}'
+        cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} submit_jobs.sh {lig_name} {n_iter} {n_states} ./{pdb_name} {str(from_amber_input)} ./{prm7_name} {str(use_alt_init_coords)}'
         print(cmd)
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE,
                   stderr=STDOUT, close_fds=True)
@@ -80,6 +84,11 @@ def main():
                         help="Number of linearly-spaced lambda-windows to use.")
     parser.add_argument("--pdb_name", type=str, default="system_endstate.pdb",
                         help="Name of pdb file to use for parametrisation.")
+    parser.add_argument("--from_amber_input", type=bool, default=False,
+                        help="Whether to create the system from amber input.")
+    parser.add_argument("--prm7_name", type=str, default="system.prm7",
+                        help="Name of prm7 file. Assumed to be the same for bound and free legs."
+                        " Only used if from_amber_input is True.")
     parser.add_argument("--use_alt_int_coords", type=bool, default=False,
                         help="Use different initial positions for each state.")
     parser.add_argument("--mode", type=str, default="run",
@@ -89,7 +98,7 @@ def main():
     if args.mode == "run":
         print("Submitting all corrections...")
         submit_all_corr(args.mmml_dir, args.n_iter_solvent, args.n_iter_complex, args.n_states,
-                        args.pdb_name, use_alt_init_coords=args.use_alt_int_coords)
+                        args.pdb_name, args.from_amber_input, args.prm7_name, use_alt_init_coords=args.use_alt_int_coords)
     elif args.mode == "clean":
         print("Cleaning all corrections...")
         clean(args.mmml_dir)
