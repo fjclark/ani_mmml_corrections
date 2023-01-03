@@ -5,5 +5,5 @@ To run the example, ensure that you have set up the environment from the yaml fi
 
 To submit the example with 5 lambda windows for 3 ns per window (each iteration is 1 ps), for both the bound and complex legs, run
 ```python
-python submit_all_cor.py --mmml_dir example_input_ejm_31 --n_iter 3000 --n_states 5
+python submit_all_cor.py --mmml_dir example_input_ejm_31 --n_iter_solvent 3000 --n_iter_complex 3000 --n_states 5
 ```
