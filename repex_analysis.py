@@ -76,7 +76,7 @@ def write_correction(ana_com, ana_sol, temp, out_file):
             f"Solvent: {corr_dict['solvent']['dg']:.3f} +/- {corr_dict['solvent']['er']:.3f} kcal/mol\n")
 
 
-def plot_correction_timeseries(output_com, output_sol, temp, out_file, components=None, step_size=10, n_iterations=5000):
+def plot_correction_timeseries(output_com, output_sol, temp, out_file, components=None, step_size=10, n_iterations_com=5000, n_iterations_sol=5000):
     """Plot correction timeseries.
 
     Args:
@@ -87,19 +87,21 @@ def plot_correction_timeseries(output_com, output_sol, temp, out_file, component
         components (list, optional): Components to plot. Subset of "corr", "complex", and "solvent".
         Defaults to None, in which case all components are plotted.
         step_size (int, optional): Step size (in iterations) between free energy evaluations. Defaults to 100.
-        n_iterations (int, optional): The number of iterations simulated. Assumed the same for solvent and 
-        complex legs. Defaults to 5000.
+        n_iterations_com (int, optional): The number of iterations simulated for the complex leg. Defaults to 5000.
+        n_iterations_sol (int, optional): The number of iterations simulated for the solvent leg. Defaults to 5000.
     """
     cumulative_corrs = {}
+    n_iterations = {"complex": n_iterations_com, "solvent": n_iterations_sol, "corr": max(n_iterations_com, n_iterations_sol)}
 
     # Get corrections for each value of max_n_iterations
-    for i, max_n_iterations in enumerate(range(step_size, n_iterations + step_size, step_size)):
+    for i, max_n_iterations in enumerate(range(step_size, n_iterations["corr"] + step_size, step_size)):
+
         rep_com = MultiStateReporter(output_com)
         ana_com = MultiStateSamplerAnalyzer(
-            rep_com, max_n_iterations=max_n_iterations)
+            rep_com, max_n_iterations=min(max_n_iterations, n_iterations["complex"]))
         rep_sol = MultiStateReporter(output_sol)
         ana_sol = MultiStateSamplerAnalyzer(
-            rep_sol, max_n_iterations=max_n_iterations)
+            rep_sol, max_n_iterations=min(max_n_iterations, n_iterations["solvent"]))
         corr_dict = get_correction(ana_com, ana_sol, temp)
 
         # Initialise the dictionary
@@ -109,6 +111,7 @@ def plot_correction_timeseries(output_com, output_sol, temp, out_file, component
                 for k in corr_dict[energy_type]:
                     cumulative_corrs[energy_type][k] = []
 
+        # Populate the dictionary
         for energy_type in corr_dict:
             for k in corr_dict[energy_type]:
                 cumulative_corrs[energy_type][k].append(
@@ -126,15 +129,20 @@ def plot_correction_timeseries(output_com, output_sol, temp, out_file, component
     # Plot
     fig, ax = plt.subplots(1, 1, figsize=(8, 6))
     for energy_type in components:
-        ax.plot(range(step_size, n_iterations + step_size, step_size),
-                cumulative_corrs[energy_type]["dg"], label=energy_type)
+        # Truncate the results from cumulative_corrs at the max number of frames stored,
+        # because the shorter simulation is made artificially longer by duplicating the final 
+        # result in order to allow the correction to be calculated up to the number of iterations
+        # for the longer simulation
+        iterations_data_points = list(range(step_size, n_iterations[energy_type] + step_size, step_size))
+        n_data_points = len(iterations_data_points) 
+        ax.plot(iterations_data_points, cumulative_corrs[energy_type]["dg"][:n_data_points], label=energy_type)
         # Find range to fill between
         upper = np.array(cumulative_corrs[energy_type]["dg"]) + \
             np.array(cumulative_corrs[energy_type]["er"])
         lower = np.array(cumulative_corrs[energy_type]["dg"]) - \
             np.array(cumulative_corrs[energy_type]["er"])
-        ax.fill_between(range(step_size, n_iterations +
-                        step_size, step_size), upper, lower, alpha=0.3)
+        ax.fill_between(range(step_size, n_iterations[energy_type] +
+                        step_size, step_size), upper[:n_data_points], lower[:n_data_points], alpha=0.3)
 
     ax.set_xlabel("Iteration")
     ax.set_ylabel("Free energy / kcal.mol$^{-1}$")
@@ -633,16 +641,17 @@ def analyse(mmml_dir, temp, sdf_file, lig_names=None, pdb_name="system_endstate.
         im.save(os.path.join(lig_dir, f"{lig}.png"))
 
         # Analysis with respect to both legs
-        # Get n_iterations - assume the same for both legs
-        n_iter = ana_com.n_iterations
+        # Get n_iterations
+        n_iter_com = ana_com.n_iterations
+        n_iter_sol = ana_sol.n_iterations
 
         write_correction(ana_com, ana_sol, temp, corr_file)
         plot_correction_timeseries(
             output_com, output_sol, temp, os.path.join(lig_dir, "correction_all_components.png"),
-            components=["corr", "complex", "solvent"], n_iterations=n_iter)
+            components=["corr", "complex", "solvent"], n_iterations_com=n_iter_com, n_iterations_sol=n_iter_sol)
         plot_correction_timeseries(
             output_com, output_sol, temp, os.path.join(lig_dir, "correction.png"),
-            components=["corr"], n_iterations=n_iter)
+            components=["corr"], n_iterations_com=n_iter_com, n_iterations_sol=n_iter_sol)
 
         # Analysis with respect to single leg
 
