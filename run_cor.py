@@ -235,13 +235,17 @@ def main():
     args = parser.parse_args()
 
     if args.use_alt_int_coords == "True":
-        run_corrections(args.lig_name, args.n_iter, args.n_states,
-                        args.pdb_path, args.sdfs_path, args.from_amber_input,
-                        args.prm7_path, use_alt_init_coords=True)
+        use_alt_init_coords = True
     else:
-        run_corrections(args.lig_name, args.n_iter, args.n_states,
-                        args.pdb_path, args.sdfs_path, args.from_amber_input,
-                        args.prm7_path, use_alt_init_coords=False)
+        use_alt_init_coords = False
+    if args.from_amber_input == "True":
+        from_amber_input = True
+    else:
+        from_amber_input = False
+
+    run_corrections(args.lig_name, args.n_iter, args.n_states,
+                    args.pdb_path, args.sdfs_path, from_amber_input,
+                    args.prm7_path, use_alt_init_coords)
 
 if __name__ == "__main__":
     main()
