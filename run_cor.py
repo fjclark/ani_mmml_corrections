@@ -28,6 +28,7 @@ from openmm.unit import nanometer, nanometers, molar, angstrom
 from openmmtools.openmm_torch.repex import (
     MixedSystemConstructor,
     RepexConstructor,
+    MultistateConstructor,
     get_atoms_from_resname,
 )
 from tempfile import mkstemp
@@ -121,7 +122,8 @@ def create_mm_system_from_amber(prm7_path):
     return mm_system
 
 
-def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, from_amber_input=False, prm7_path=None, use_alt_init_coords=False):
+def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, from_amber_input=False,
+                    prm7_path=None, use_alt_init_coords=False, repex=True):
     """Run MM->ANI corrections for a single ligand in complex or solvent leg
 
     Args:
@@ -134,6 +136,7 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, from_amber_
         prm7_path (str, optional): Path to prm7 file. Defaults to None. Must be set if from_amber_input is True.
         use_alt_init_coords (bool, optional): Whether to use different initial 
         coordinates for each state. Defaults to True.
+        repex (bool, optional): Whether to use replica exchange. Defaults to True.
     """
     if from_amber_input and prm7_path is None:
         raise ValueError("Must set prm7_path if from_amber_input is True")
@@ -174,6 +177,7 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, from_amber_
     # Write out input parameters
     with open("input_params.txt", "w") as f:
         f.write(f"n_iter: {n_iter}\n")
+        f.write(f"Repex: {repex}\n")
         f.write(f"n_states: {n_states}\n")
         f.write(f"temperatures: {temperatures}\n")
 
@@ -189,8 +193,13 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, from_amber_
                                           topology=input_file.topology,
                                           removeConstraints=True).mixed_system
 
+    if repex:
+        constructor = RepexConstructor
+    else:
+        constructor = MultistateConstructor
+
     # Get sampler
-    sampler = RepexConstructor(mixed_system,
+    sampler = constructor(mixed_system,
                                initial_positions=[
                                    PDBFile(pdb).positions for pdb in init_coords_pdbs],
                                temperatures=temperatures,
@@ -199,7 +208,7 @@ def run_corrections(lig_name, n_iter, n_states, pdb_path, sdfs_path, from_amber_
                                                   'collision_rate': 1.0/unit.picoseconds,
                                                   'n_steps': 1000,
                                                   'reassign_velocities': True},
-                               replica_exchange_sampler_kwargs={'number_of_iterations': n_iter,
+                               sampler_kwargs={'number_of_iterations': n_iter,
                                                                 'online_analysis_interval': 10,
                                                                 'online_analysis_minimum_iterations': 10, },
                                storage_kwargs={'storage': f'{os.getcwd()}/repex.nc',
@@ -232,6 +241,7 @@ def main():
                         help="Path to prmtop file. Must be set if from_amber_input is True")
     parser.add_argument("--use_alt_int_coords", type=str, default="False",
                         help="Whether or not to start replicas from different initial coordinates")
+    parser.add_argument("--repex", type=str, default="False", help="Whether or not to use replica exchange")
     args = parser.parse_args()
 
     if args.use_alt_int_coords == "True":
@@ -242,10 +252,14 @@ def main():
         from_amber_input = True
     else:
         from_amber_input = False
+    if args.repex == "True":
+        repex = True
+    else:
+        repex = False
 
     run_corrections(args.lig_name, args.n_iter, args.n_states,
                     args.pdb_path, args.sdfs_path, from_amber_input,
-                    args.prm7_path, use_alt_init_coords)
+                    args.prm7_path, use_alt_init_coords, repex)
 
 if __name__ == "__main__":
     main()

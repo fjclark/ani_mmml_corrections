@@ -21,7 +21,7 @@ def get_outdirs(mmml_dir):
 
 
 def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name="system_endstate.pdb",
-                    from_amber_input = False, prm7_name="system.prm7", use_alt_init_coords=False):
+                    from_amber_input = False, prm7_name="system.prm7", use_alt_init_coords=False, turn_off_repex=False):
     """Submit all corrections to slurm
 
     Args:
@@ -38,6 +38,7 @@ def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name
         Only required if from_amber_input is True.
         use_alt_init_coords (bool, optional): Whether to use different initial positions for each state.
         Defaults to True.
+        turn_off_repex (bool, optional): Whether to turn off replica exchange. Defaults to False.
     """
     print(f"Use alt init coords: {use_alt_init_coords}")
     # Submit runs
@@ -48,7 +49,7 @@ def submit_all_corr(mmml_dir, n_iter_solvent, n_iter_complex, n_states, pdb_name
             n_iter = n_iter_complex
         else:
             n_iter = n_iter_solvent
-        cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} submit_jobs.sh {lig_name} {n_iter} {n_states} ./{pdb_name} {str(from_amber_input)} ./{prm7_name} {str(use_alt_init_coords)}'
+        cmd = f'~/Documents/research/scripts/abfe/rbatch.sh --chdir={out_dir} submit_jobs.sh {lig_name} {n_iter} {n_states} ./{pdb_name} {str(from_amber_input)} ./{prm7_name} {str(use_alt_init_coords)} {str(turn_off_repex != True)}'
         print(cmd)
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE,
                   stderr=STDOUT, close_fds=True)
@@ -93,12 +94,15 @@ def main():
                         help="Use different initial positions for each state.")
     parser.add_argument("--mode", type=str, default="run",
                         help="run or clean: whether to run all corrections or clean up.")
+    parser.add_argument("--turn_off_repex", type=bool, default=False, help="Turn off replica exchange.")
+    
     args = parser.parse_args()
 
     if args.mode == "run":
         print("Submitting all corrections...")
         submit_all_corr(args.mmml_dir, args.n_iter_solvent, args.n_iter_complex, args.n_states,
-                        args.pdb_name, args.from_amber_input, args.prm7_name, use_alt_init_coords=args.use_alt_int_coords)
+                        args.pdb_name, args.from_amber_input, args.prm7_name, use_alt_init_coords=args.use_alt_int_coords,
+                        turn_off_repex=args.turn_off_repex)
     elif args.mode == "clean":
         print("Cleaning all corrections...")
         clean(args.mmml_dir)
