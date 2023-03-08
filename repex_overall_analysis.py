@@ -8,8 +8,8 @@ import pandas as pd
 import argparse
 import logging
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__) 
-logger.setLevel(logging.INFO)
 
 # Not used in current version of script
 def get_overall_correction(analysers_dict, temp):
@@ -39,6 +39,8 @@ def get_overall_correction(analysers_dict, temp):
         # Get dg as mean of all runs
         overall_results_dict[dg_type]["dg"] = np.mean(cumulative_results_dict[dg_type]["dg"])
         # Get er (SD) by combining inter- and intra- run er
+        # TODO: Think about the best way to do this - 95 % C.I.s from inter-run errors? Will
+        # be large error in this error with only three repeats.
         intra_run_er = np.sqrt(np.sum(np.array(cumulative_results_dict[dg_type]["er"])**2))
         inter_run_er = np.std(cumulative_results_dict[dg_type]["dg"])
         overall_results_dict[dg_type]["er"] = np.sqrt(intra_run_er**2 + inter_run_er**2)
@@ -113,10 +115,17 @@ def get_overall_results_dict(output_dirs, temp=300):
             sol_nc_file = os.path.join(dir_name, lig_name, "solvent", "repex.nc")
 
             # Get analysers
-            rep_com = MultiStateReporter(com_nc_file)
-            rep_sol = MultiStateReporter(sol_nc_file)
-            ana_com = MultiStateSamplerAnalyzer(rep_com)
-            ana_sol = MultiStateSamplerAnalyzer(rep_sol)
+            try:
+                rep_com = MultiStateReporter(com_nc_file)
+                rep_sol = MultiStateReporter(sol_nc_file)
+                ana_com = MultiStateSamplerAnalyzer(rep_com)
+                ana_sol = MultiStateSamplerAnalyzer(rep_sol)
+            # We can't read the nc file
+            except AttributeError:
+                logger.error(f"Simulation for {lig_name} crashed for replicate {rep_no}. Skipping analysis.")
+                results[lig_name][rep_no] = {"dg": np.nan, "er": np.nan}
+                continue
+            
 
             # Get correction for a single replicate
             cor_dict = get_correction(ana_com, ana_sol, temp)
@@ -126,9 +135,11 @@ def get_overall_results_dict(output_dirs, temp=300):
 
         # Get the overall stats, including inter- and intra-replicate error in the overall,
         # and ignoring any nans
+        # TODO: Think about the best way to do this - 95 % C.I.s from inter-run errors? Will
+        # be large error in this error with only three repeats.
         mean_corr = np.nanmean([results[lig_name][rep_no]["dg"] for rep_no in results[lig_name]])
         er_inter = np.nanstd([results[lig_name][rep_no]["dg"] for rep_no in results[lig_name]])
-        er_intra = np.sqrt(np.nansum([results[lig_name][rep_no]["er"]**2 for rep_no in results[lig_name]]))
+        er_intra = np.sqrt(np.nansum([results[lig_name][rep_no]["er"]**2 for rep_no in results[lig_name]]))/len(results[lig_name])
         er_overall = np.sqrt(er_inter**2 + er_intra**2)
         results[lig_name]["overall"] = {"dg": mean_corr, "er": er_overall}
 
@@ -193,10 +204,22 @@ def main():
     # Print out which ligands have failed
     failed_ligs = [lig for lig in res_df.index if np.isnan(res_df.loc[lig]["Delta G (kcal / mol)"])]
     for lig in failed_ligs:
-        logger.error(f"Calculation for ligand {lig[0]}, repeat {lig[1]} failed.")
+        logger.error(f"Calculation for ligand {lig[0]}, repeat {lig[1]} failed, will resubmit.") 
+
+    # Resubmit failures
+    if len(failed_ligs) > 0:
+        logger.info("Resubmitting failed calculations...")
+        for lig in failed_ligs:
+            lig_name = lig[0]
+            rep_no = lig[1]
+            dir_name = f"{lig_name}_{rep_no}"
+            # Save the old output
+            os.system(f"cp -r {dir_name} {dir_name}_failure")
+            # Clean the input
+            base_cmd = f"python submit_all_cor.py --mmml_dir {dir_name} --n_iter_solvent 3000 --n_iter_complex 1000 --n_states 5"
+            os.system(base_cmd + " --mode clean")
+            # Resubmit
+            os.system(base_cmd)
 
 if __name__ == "__main__":
     main()
-
-
-

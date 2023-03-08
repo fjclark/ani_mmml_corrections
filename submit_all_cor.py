@@ -67,10 +67,12 @@ def clean(mmml_dir):
     Args:
         mmml_dir (str): Path to mmml_corrections directory.
     """
-    for lig_name, out_dir in get_outdirs(mmml_dir):
-        cmd = f'rm {out_dir}/repex* {out_dir}/ani_correction* {out_dir}/input_params.txt'
+    cmds = [f'rm {out_dir}/repex* {out_dir}/ani_correction* {out_dir}/input_params.txt',
+            f'rm -rf {out_dir}/nan-error-logs']
+    for cmd in cmds:
         print(cmd)
         os.system(cmd)
+
 
 
 def main():
